@@ -3,7 +3,7 @@
   (:require [quil.core :as q :include-macros true ]
             [quil.middleware :as m]
 			[clojure.java.io :as io]))
-(defn output[string state] (println string state)state)
+(defn output[string state] (println string state)state) ;used for testing output of function 
 (defn run [] (use 'paint.core :reload-all))
 ;(def toggle_state (atom {:file_loaded false}))
 (def counter (atom 0))
@@ -34,10 +34,8 @@
 
 (defn loading[state] 
 	(if (.exists(io/file "test.txt"))
-	(if (not (state :file_loaded))(assoc state :mouse_loc(read-string (slurp "test.txt")):file_loaded true)state)
+	(if (not (state :file_loaded))(assoc state :mouse_loc(read-string (slurp "test.txt")):file_loaded true :button_state nil)state)
 	state))
-	
-	
 (defn setup []
   (q/frame-rate 60)
   (q/color-mode :rgb)
@@ -66,7 +64,7 @@
     button_state
     ))
 	
-(defn erase_screen[state]  (println "state :mouse_loc = "(state :mouse_loc)) (assoc state :mouse_loc [[]]))
+
 
 (defn update-state [state]
  (cond-> state
