@@ -6,8 +6,6 @@
 (defn output[string state] (println string state)state) ;used for testing output of function 
 (defn run [] (use 'paint.core :reload-all))
 ;(def toggle_state (atom {:file_loaded false}))
-(def counter (atom 0))
-
 (defn line[state]
 (cond
 	(and (not (q/mouse-pressed?))(<= 2(count(peek (:mouse_loc state)))))(conj (state :mouse_loc) []) 
@@ -16,7 +14,6 @@
 				(conj (pop (state :mouse_loc)) (conj (peek (state :mouse_loc)) [(:draw_color state)(:draw_thickness state) (q/mouse-x) (q/mouse-y)]))
 	:else (state :mouse_loc)
 ))
-
 (defn drawing[state]
 ;(println  (:mouse_loc state))
    (cond
@@ -31,7 +28,6 @@
 	;(assoc state :file_saved true) ; Makes sure the files is saved once and not (q/frame-rate) times a second
 	true
 	)
-
 (defn loading[state] 
 	(if (.exists(io/file "test.txt"))
 	(if (not (state :file_loaded))(assoc state :mouse_loc(read-string (slurp "test.txt")):file_loaded true :button_state nil)state)
@@ -51,7 +47,6 @@
   :draw_color 255
   :draw_thickness 15
    })
-
 (defn which-button[x y button_state ] 
   (if (and(>= 100 x)(<= 0 x)(<= 100 y)(>= 300 y))
     (cond ; todo fix this so I dont have to add stuff to multiple places in order to add another button
@@ -63,9 +58,6 @@
        )
     button_state
     ))
-	
-
-
 (defn update-state [state]
  (cond-> state
 	;draw
@@ -104,8 +96,7 @@
 				 
                  ; :else (state :mouse_loc)
                   ; ) } 
-)				 
-				 
+)				 			 
 (defn draw-button [x y width height b-name b-pressed]
   (q/stroke 0)
   (q/stroke-weight 1)
@@ -117,9 +108,7 @@
   (q/text-align :center)
   (q/text b-name (+ x 45) (+ y 35))
   )
-
 (defn draw-screen [state]
-
   (q/background 200)
   (q/text-size 30)
   (q/stroke 0)
@@ -142,10 +131,8 @@
 	 )(state :mouse_loc)
  )))
 state)
-
 (defn click [state m_state]
 (assoc state :button_state (which-button (m_state :x)(m_state :y)(state :button_state)) ) )
-  
 (q/defsketch paint
   :title "draw: hit C to clear screen"
   :size [500 500]
@@ -155,4 +142,3 @@ state)
   :mouse-clicked click
   :features [:resizable]
   :middleware [m/fun-mode])
-
