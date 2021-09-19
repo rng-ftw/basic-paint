@@ -9,3 +9,4 @@ pom.xml.asc
 /.nrepl-port
 #project.clj#
 .lein-repl-history
+test.txt
