@@ -3,10 +3,7 @@
   (:require [quil.core :as q :include-macros true ]
             [quil.middleware :as m]
 			[clojure.java.io :as io]))
-(defn output[string & state] (println string state)state) ;used for testing output of a function 
 (defn run [] (use 'paint.core :reload-all))
-;(def toggle_state (atom {:file_loaded false}))
-
 (defn line[state]
 (cond
 	(and (not (q/mouse-pressed?))(<= 2(count(peek (:mouse_loc state)))))(conj (state :mouse_loc) []) 
@@ -33,22 +30,22 @@
 (defn loading[state] 
 	(if (.exists(io/file "test.txt"))
 		(let [color (:color (state :button_state ))]
-		(println "loading color" color)
 		(if (not (state :file_loaded))(assoc state :mouse_loc(read-string (slurp "test.txt")):file_loaded true :button_state {:func nil :color color })state))
 	state))
 (defn setup []
   (q/frame-rate 60)
-  (q/color-mode :rgb)
+  ;(q/color-mode :rgb)
   ; setup function returns initial state. 
   {
   :file_saved false
   :file_loaded false
   :button_loc  (mapv #( into [] [0  %1 (%2 0)(%2 1)]) [100 150 200 250 300 350 400 450 500](repeat [100 50]))
+  :color_names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
   :button_names ["line" "draw" "save" "load" "red" "green" "blue" "black" "white"]
-  :button_state {:func nil :color nil}
+  :button_state {:func nil :color "black"}
   :mouse_state nil
   :mouse_loc  [[]]; last one needs to be empty [[]] format is [[color width x y]]
-  :draw_color 255
+  :draw_color 0
   :draw_thickness 15
    })
 (defn which-button[x y button_state ] 
@@ -79,7 +76,8 @@
 (defn update-state [state]
  (cond-> state
 	;switch to color chosen
-	  ;(and (:color(state :button_state)) (not= ((:color(state :button_state)))(state :draw_color)))
+	  (and (:color(state :button_state)) (not= (:color (state :button_state)) (state :draw_color)))
+		(assoc :draw_color ((state :color_names)(:color(state :button_state))  ))
 	;draw
 	  (= (:func(state :button_state)) "draw") (assoc :mouse_loc (drawing state))
 	;line
@@ -88,7 +86,7 @@
 	  (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse_loc [[]] ) ;needs to be at the below draw and line to work ???  
 	;load
 	  (= (:func(state :button_state)) "load") (loading)
-	  (not= (:func(state :button_state)) "load") (assoc :file_loaded false)
+	  (not= (:func(state :button_state)) "load")(assoc :file_loaded false)
 	;save
 	  (and (= (:func(state :button_state)) "save")(not(state :file_saved))) (assoc :file_saved (save state))
 	  (not= (:func(state :button_state)) "save") (assoc :file_saved false)
@@ -96,26 +94,6 @@
 	  (and(q/mouse-pressed?)(not(and(>= 100 (q/mouse-x))(<= 0 (q/mouse-x))(<= 100 (q/mouse-y))(>= 550 (q/mouse-y)))))(assoc :mouse_state true)
 	  (not(q/mouse-pressed?)) (assoc :mouse_state false)
 	  )
-	 ; { 
-	 ; :file_saved  (if (and (= (state :button_state) "save")(not(state :file_saved)))(save state)(state :file_saved))
-	 ; :button_loc (do(:file_saved true )(state  :button_loc))
-	 ; :button_names (state :button_names)
-	 ; :mouse_state (if (and(q/mouse-pressed?)(not(and(>= 100 (q/mouse-x))(<= 0 (q/mouse-x))(<= 100 (q/mouse-y))(>= 300 (q/mouse-y))))) true false); not really keen on this one, this stops drawing  from/to on screen buttons which doesnt really work
-	 ; :button_state (state :button_state);
-	 ; :draw_color (state :draw_color)
-	 ; :draw_thickness (state :draw_thickness)
-	 ; :mouse_loc 
-                ; (cond
-				 ; (and (q/key-pressed?) (= (q/key-as-keyword) :c))  [[]] 
-                ; ;draw
-                  ; (= (state :button_state) "draw") (drawing state)
-                ; ;line
-                  ; (= (state :button_state) "line") (line state)
-				; ;load
-				  ; (= (state :button_state) "load") (if (not(@toggle_state :file_loaded)) ( load)(state :mouse_loc))
-				 
-                 ; :else (state :mouse_loc)
-                  ; ) } 
 )				 			 
 (defn draw-button [x y width height b-name b-pressed]
   (q/stroke 0)
@@ -129,32 +107,33 @@
   (q/text b-name (+ x 45) (+ y 35))
   )
 (defn draw-screen [state]
-  (q/background 200)
-  (q/text-size 30)
-  (q/stroke 0)
-  (q/stroke-weight 10)
-  (q/line 0 0 (q/width)0);draw line at top 
+   (q/background 200)
+   ; (q/stroke-weight 0)
+   ; (q/fill -16777216)
+   ; (q/ellipse 200 200 5 5)
+   
+   (q/text-size 30)
+   (q/stroke-weight 1)
+  
   (doall  ;function buttons
 	(map #(draw-button (%1 0)(% 1)(% 2) (% 3) %2 
 	(or (= (:func(state :button_state))%2) (= (:color(state :button_state))%2)))
 		(state :button_loc)(state  :button_names) ))
-   
-  (q/fill 255 0 0)
+		
   (q/text-align :center :center)
   (when (q/key-pressed?) (q/text (str "key as keyword:"(q/key-as-keyword)) (q/mouse-x) (+(q/mouse-y)30)))
   (when (q/mouse-pressed?) (q/text (str (q/mouse-x)" " (q/mouse-y)) (q/mouse-x) (+ (q/mouse-y) 10))) 
+  
 (when (seq (state :mouse_loc)); needs to enventual be removed
   (doall (map
   #(cond
 	 (= 0 (count %)) nil
-	 (= 1 (count %)) ((fn [[[c1 w1 x y]]](q/stroke c1 0 255)(q/stroke-weight w1) (q/ellipse x y  2 2 )) %) ;individual pixels are really small :p
-	 (< 1 (count %)) (doall (map (fn[[c1 w1 a b _ _  c d]](q/stroke c1 0 255)(q/stroke-weight w1)(q/line a b c d))(partition 8 4(flatten %))))
-	 )(state :mouse_loc)
+	 (= 1 (count %)) ((fn [[[c1 w1 x y]]](q/stroke c1)(q/fill c1)(q/stroke-weight 0) (q/ellipse x y  w1 w1 )) %) ;individual pixels are really small :p
+	 (< 1 (count %)) (doall (map (fn[[c1 w1 a b _ _  c d]](q/stroke c1 )(q/stroke-weight w1)(q/line a b c d))(partition 8 4(flatten %)))))(state :mouse_loc)
  )))
 state)
 (defn click [state m_state]
 (assoc state :button_state (which-button (m_state :x)(m_state :y)(state :button_state)) )) 
-
 (q/defsketch paint
   :title "draw: hit C to clear screen"
   :size [500 500]
