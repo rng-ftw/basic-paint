@@ -1,18 +1,11 @@
-# my-art
+# paint
 
-A Quil sketch designed to ... well, that part is up to you.
+hit c to clear screen
+screen can be resize to max screen size for larger draw area
 
-## Usage
+line: draws a line between 2 points
+Draw: draws as long as the mouse button is held down
+save: saves to same directory as program location and saves as test.txt
+load: loads test.txt doesnt do anything if file does not exist
 
-LightTable - open `core.clj` and press `Ctrl+Shift+Enter` to evaluate the file.
-
-Emacs - run cider, open `core.clj` and press `C-c C-k` to evaluate the file.
-
-REPL - run `(require 'my-art.core)`.
-
-## License
-
-Copyright © 2016 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+color defaults to black unless you choose another color.

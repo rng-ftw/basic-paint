@@ -10,3 +10,8 @@ pom.xml.asc
 #project.clj#
 .lein-repl-history
 test.txt
+/.calva
+/.lsp
+.lein-repl-history
+.socket-repl-port
+.nrepl-port
