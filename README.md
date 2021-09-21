@@ -1,5 +1,7 @@
 # paint
 
+Looking to get some feedback/code review.
+
 hit c to clear screen
 
 screen can be resize to max screen size for larger draw area
