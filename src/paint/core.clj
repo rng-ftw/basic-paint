@@ -103,7 +103,6 @@
 )		
 		 			 
 (defn draw-button [x y width height b-name b-pressed]
-	(println [x y width height b-name b-pressed])
   (q/stroke 0)
   (q/stroke-weight 1)
   (if b-pressed(q/fill 0 255 200)(q/fill 0 0 200))
@@ -121,9 +120,14 @@
    (q/stroke-weight 1)
   
   (doall  ;function buttons
-	(map #(draw-button (%1 0)(% 1)(% 2) (% 3) %2 
-	(or (= (:func(state :button-state))%2) (= (:color(state :button-state))%2)))
-		(state :button-loc)(state  :button-names) ))
+  (map (fn [[x y width height]button-names ](draw-button  x y width height button-names
+	(or (= (:func(state :button-state))button-names) (= (:color(state :button-state))button-names))))
+		(state :button-loc)(state :button-names)))
+  
+  
+	; (map #(draw-button (%1 0)(% 1)(% 2) (% 3) %2 
+	; (or (= (:func(state :button-state))%2) (= (:color(state :button-state))%2)))
+		; (state :button-loc)(state :button-names)))
 		
   (q/text-align :center :center)
   (when (q/key-pressed?) (q/text (str "key as keyword:"(q/key-as-keyword)) (q/mouse-x) (+(q/mouse-y)30)))
@@ -133,8 +137,8 @@
   (doall (map
   #(cond
 	 (= 0 (count %)) nil
-	 (= 1 (count %)) ((fn [[[c1 w1 x y]]](q/stroke c1)(q/fill c1)(q/stroke-weight 0) (q/ellipse x y  w1 w1 )) %) ;individual pixels are really small :p
-	 (< 1 (count %)) (doall (map (fn[[c1 w1 a b - -  c d]](q/stroke c1 )(q/stroke-weight w1)(q/line a b c d))(partition 8 4(flatten %)))))(state :mouse-loc)
+	 (= 1 (count %)) ((fn [[[color width x y]]](q/stroke color)(q/fill color)(q/stroke-weight 0) (q/ellipse x y  width width )) %) ;individual pixels are really small :p
+	 (< 1 (count %)) (doall (map (fn[[color width x1 y1 - -  x2 y2]](q/stroke color )(q/stroke-weight width)(q/line x1 y1 x2 y2))(partition 8 4(flatten %)))))(state :mouse-loc)
  )))
 state)
 
