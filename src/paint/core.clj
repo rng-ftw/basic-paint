@@ -4,10 +4,10 @@
             [quil.middleware :as m]
 			[clojure.java.io :as io]
 			[clojure.edn :as edn]))
+			
 (defn run [] (use 'paint.core :reload-all))
 
 (defn line[state]
-(println (state :mouse-state)(not (q/mouse-pressed?)))
 (cond
 	(and (not (q/mouse-pressed?))(<= 2(count(peek (:mouse-loc state)))))(conj (state :mouse-loc) []) 
 	(and (state :mouse-state)(not (q/mouse-pressed?))
@@ -26,7 +26,7 @@
   )
   
 (defn save[state]
-	(when (not(state :file-saved)) (spit "test.txt" (state :mouse-loc)))
+	(when-not(state :file-saved) (spit "test.txt" (state :mouse-loc)))
 	true)
 	
 (defn loading[state] 
@@ -39,12 +39,12 @@
 	
 (defn setup []
   (q/frame-rate 60)
-  ;(q/color-mode :rgb)
   ; setup function returns initial state. 
   {
   :file-saved false
   :file-loaded false
-  :button-loc  (mapv #( into [] [0  %1 (%2 0)(%2 1)]) [100 150 200 250 300 350 400 450 500](repeat [100 50]))
+  :button-loc  (mapv (fn[x y [width height]] [x y width height]) (repeat 0)[100 150 200 250 300 350 400 450 500](repeat [100 50]))
+  ;(mapv #( into [] [0  %1 (%2 0)(%2 1)]) [100 150 200 250 300 350 400 450 500](repeat [100 50]))
   :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
   :button-names ["line" "draw" "save" "load" "red" "green" "blue" "black" "white"]
   :button-state {:func nil :color "black"}
@@ -103,6 +103,7 @@
 )		
 		 			 
 (defn draw-button [x y width height b-name b-pressed]
+	(println [x y width height b-name b-pressed])
   (q/stroke 0)
   (q/stroke-weight 1)
   (if b-pressed(q/fill 0 255 200)(q/fill 0 0 200))
@@ -116,10 +117,6 @@
   
 (defn draw-screen [state]
    (q/background 200)
-   ; (q/stroke-weight 0)
-   ; (q/fill -16777216)
-   ; (q/ellipse 200 200 5 5)
-   
    (q/text-size 30)
    (q/stroke-weight 1)
   
