@@ -43,7 +43,7 @@
   {
   :file-saved false
   :file-loaded false
-  :button-loc  (mapv (fn[x y [width height]] [x y width height]) (repeat 0)[100 150 200 250 300 350 400 450 500](repeat [100 50]))
+  :button-loc  (mapv #(vector 0 % 100 50)[100 150 200 250 300 350 400 450 500]) ;format is [x y with height]
   ;(mapv #( into [] [0  %1 (%2 0)(%2 1)]) [100 150 200 250 300 350 400 450 500](repeat [100 50]))
   :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
   :button-names ["line" "draw" "save" "load" "red" "green" "blue" "black" "white"]
@@ -89,7 +89,7 @@
 	;line
 	  (= (:func(state :button-state)) "line") (assoc :mouse-loc (line state))
 	 ;clears screen 
-	  (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse-loc [[]] ) ;needs to be at the below draw and line to work ???  
+	  (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse-loc [[]]) ;needs to be at the below draw and line to work ???  
 	;load
 	  (= (:func(state :button-state)) "load") (loading)
 	  (not= (:func(state :button-state)) "load")(assoc :file-loaded false)
@@ -120,14 +120,10 @@
    (q/stroke-weight 1)
   
   (doall  ;function buttons
-  (map (fn [[x y width height]button-names ](draw-button  x y width height button-names
-	(or (= (:func(state :button-state))button-names) (= (:color(state :button-state))button-names))))
-		(state :button-loc)(state :button-names)))
-  
-  
-	; (map #(draw-button (%1 0)(% 1)(% 2) (% 3) %2 
-	; (or (= (:func(state :button-state))%2) (= (:color(state :button-state))%2)))
-		; (state :button-loc)(state :button-names)))
+    (map (fn [[x y width height]button-names ](draw-button  x y width height button-names
+	; this allows for 2 buttons to be highlighted a func and color button
+      (or (= (:func(state :button-state))button-names) (= (:color(state :button-state))button-names))))
+        (state :button-loc)(state :button-names)))
 		
   (q/text-align :center :center)
   (when (q/key-pressed?) (q/text (str "key as keyword:"(q/key-as-keyword)) (q/mouse-x) (+(q/mouse-y)30)))
@@ -137,7 +133,7 @@
   (doall (map
   #(cond
 	 (= 0 (count %)) nil
-	 (= 1 (count %)) ((fn [[[color width x y]]](q/stroke color)(q/fill color)(q/stroke-weight 0) (q/ellipse x y  width width )) %) ;individual pixels are really small :p
+	 (= 1 (count %)) ((fn [[[color width x y]]](q/stroke color)(q/fill color)(q/stroke-weight 0)(q/ellipse x y  width width )) %) ;individual pixels are really small :p
 	 (< 1 (count %)) (doall (map (fn[[color width x1 y1 - -  x2 y2]](q/stroke color )(q/stroke-weight width)(q/line x1 y1 x2 y2))(partition 8 4(flatten %)))))(state :mouse-loc)
  )))
 state)
