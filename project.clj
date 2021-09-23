@@ -5,5 +5,6 @@
 				 [vlaaad/reveal "1.3.212"]
 				 [cider/nrepl "0.3.0"]
 				 ]
-	:main paint.core			 
+	:main paint.core	
+	:plugins [[lein-cljfmt "0.8.0"]]	
 )
