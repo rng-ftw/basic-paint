@@ -4,7 +4,7 @@
                  [quil "3.1.0"]
 				 [vlaaad/reveal "1.3.212"]
 				 [cider/nrepl "0.3.0"]
-				 ]
+				 [org.clojure/math.numeric-tower "0.0.4"]]
 	:main paint.core	
 	:plugins [[lein-cljfmt "0.8.0"]]	
 )

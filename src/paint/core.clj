@@ -3,17 +3,22 @@
   (:require [quil.core :as q]
             [quil.middleware :as m]
             [clojure.java.io :as io]
-            [clojure.edn :as edn]))
+            [clojure.edn :as edn]
+            [clojure.math.numeric-tower :as math]))
 
 (defn run [] (use 'paint.core :reload-all))
 
 (defn line [state]
-  (cond
-    (and (not (q/mouse-pressed?)) (<= 2 (count (peek (:mouse-loc state))))) (conj (state :mouse-loc) [])
-    (and (state :mouse-state) (not (q/mouse-pressed?))
-         (not= [(q/mouse-x) (q/mouse-y)] (take-last 2 (peek (peek (:mouse-loc state))))));checks for dupes
-    (conj (pop (state :mouse-loc)) (conj (peek (state :mouse-loc)) [(:draw-color state) (:draw-thickness state) (q/mouse-x) (q/mouse-y)]))
-    :else (state :mouse-loc)))
+  (let [m-state (state :mouse-state)
+        m-loc (:mouse-loc state)
+        b-rel (state :button-release)
+        x     (:x (state :button-release))
+        y     (:y (state :button-release))]
+    (cond
+      (and (not m-state) (<= 2 (count (peek m-loc)))) (assoc state :mouse-loc (conj (state :mouse-loc) []))
+      (and  b-rel (not= [x y] (take-last 2 (peek (peek m-loc)))));checks for dupes
+      (assoc state :mouse-loc (conj (pop m-loc) (conj (peek m-loc) [(:draw-color state) (:draw-thickness state) x y])) :button-release nil)
+      :else state)))
 
 (defn drawing [state]
   (cond
@@ -41,10 +46,10 @@
   {:file-saved false
    :file-loaded false
    :button-loc  (mapv #(vector 0 % 100 50) [100 150 200 250 300 350 400 450 500]) ;format is [x y with height]
-  ;(mapv #( into [] [0  %1 (%2 0)(%2 1)]) [100 150 200 250 300 350 400 450 500](repeat [100 50]))
    :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
    :button-names ["line" "draw" "save" "load" "red" "green" "blue" "black" "white"]
    :button-state {:func nil :color "black"}
+   :button-release nil
    :mouse-state nil
    :mouse-loc  [[]]; last one needs to be empty [[]] format is [[color width x y]]
    :draw-color 0
@@ -72,24 +77,24 @@
 
 (defn update-state [state]
   (cond-> state
-	;switch to color chosen
+  ;stop initial button click from being added to drawing
+    (and (q/mouse-pressed?) (not (and (>= 100 (q/mouse-x)) (<= 0 (q/mouse-x)) (<= 100 (q/mouse-y)) (>= 550 (q/mouse-y))))) (assoc :mouse-state true)
+    (not (q/mouse-pressed?)) (assoc :mouse-state false)
+    ;switch to color chosen
     (and (:color (state :button-state)) (not= (:color (state :button-state)) (state :draw-color)))
     (assoc :draw-color ((state :color-names) (:color (state :button-state))))
-	;draw
+    ;draw
     (= (:func (state :button-state)) "draw") (assoc :mouse-loc (drawing state))
-	;line
-    (= (:func (state :button-state)) "line") (assoc :mouse-loc (line state))
-	 ;clears screen 
+    ;line
+    (= (:func (state :button-state)) "line") (line)
+     ;clears screen 
     (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse-loc [[]]) ;needs to be at the below draw and line to work ???  
-	;load
+    ;load
     (= (:func (state :button-state)) "load") (loading)
     (not= (:func (state :button-state)) "load") (assoc :file-loaded false)
-	;save
+    ;save
     (and (= (:func (state :button-state)) "save") (not (state :file-saved))) (assoc :file-saved (save state))
-    (not= (:func (state :button-state)) "save") (assoc :file-saved false)
-	;stop initial button click from being added to drawing
-    (and (q/mouse-pressed?) (not (and (>= 100 (q/mouse-x)) (<= 0 (q/mouse-x)) (<= 100 (q/mouse-y)) (>= 550 (q/mouse-y))))) (assoc :mouse-state true)
-    (not (q/mouse-pressed?)) (assoc :mouse-state false)))
+    (not= (:func (state :button-state)) "save") (assoc :file-saved false)))
 
 (defn draw-button [x y width height b-name b-pressed]
   (q/stroke 0)
@@ -109,8 +114,9 @@
 
   (doall  ;function buttons
    (map (fn [[x y width height] button-names] (draw-button  x y width height button-names
-	; this allows for 2 buttons to be highlighted a func and color button
-                                                            (or (= (:func (state :button-state)) button-names) (= (:color (state :button-state)) button-names))))
+    ; this allows for 2 buttons to be highlighted a func and color button
+                                                            (or (= (:func (state :button-state)) button-names)
+                                                                (= (:color (state :button-state)) button-names))))
         (state :button-loc) (state :button-names)))
 
   (q/text-align :center :center)
@@ -128,6 +134,18 @@
 (defn click [state m-state]
   (assoc state :button-state (which-button (m-state :x) (m-state :y) (state :button-state))))
 
+(defn wheel [state w-state]
+  (let [num (math/abs (+ (state :draw-thickness) w-state))] ;make sure :draw-thickness doesnt go negative
+    (println "wheel" w-state num)
+    (assoc state :draw-thickness num)))
+
+(defn m-release [state r-state]
+  (println "button released" r-state)
+  (let [x (:x r-state) y (:y r-state)]
+    (if (not (and (>= 100 x) (<= 0 x) (<= 100 y) (>= 550 y)))
+      (do (println "changed :button-release")
+          (assoc state :button-release r-state)) state)))
+
 (q/defsketch paint
   :title "draw: hit C to clear screen"
   :size [500 500]
@@ -135,5 +153,7 @@
   :update update-state
   :draw draw-screen
   :mouse-clicked click
+  :mouse-released m-release
+  :mouse-wheel wheel
   :features [:resizable]
   :middleware [m/fun-mode])
