@@ -13,21 +13,28 @@
   (let [m-state (:mouse-state state)
         m-loc (:mouse-loc-data state)
         b-rel (:button-release state)
-        x     (:x (:button-release state))
-        y     (:y (:button-release state))]
+        color (:draw-color state)
+        draw-width (:draw-width state)
+        [x y] (get-mouse-loc)]
     (cond
       (and (not m-state) (<= 2 (count (peek m-loc)))) (assoc state :mouse-loc-data (conj (:mouse-loc-data state) []))
       (and  b-rel (not= [x y] (take-last 2 (peek (peek m-loc)))));checks for dupes
-      (assoc state :mouse-loc-data (conj (pop m-loc) (conj (peek m-loc) [(:draw-color state) (:draw-thickness state) x y])) :button-release nil)
+      (assoc state :mouse-loc-data (conj (pop m-loc) (conj (peek m-loc) [color draw-width x y])) :button-release nil)
       :else state)))
 
 (defn drawing [state]
-  (cond
-    (and (not (:mouse-state state)) (seq (peek (:mouse-loc-data state)))) (conj (:mouse-loc-data state) []);adds [] to the end to seprate lines drawn
-    (and (:mouse-state state)
-         (not= (get-mouse-loc)  (take-last 2 (peek (peek (:mouse-loc-data state)))))) ; removes dupes
-    (conj (pop (state :mouse-loc-data)) (conj (peek (state :mouse-loc-data)) [(:draw-color state) (:draw-thickness state) (q/mouse-x) (q/mouse-y)]))
-    :else (state :mouse-loc-data)))
+  (let [mouse-loc-data (:mouse-loc-data state)
+        draw-color (:draw-color state)
+        draw-width (:draw-width state)
+        [x y] (get-mouse-loc)
+        button-pressed (:button-pressed state)]
+    (cond
+      (and (not button-pressed) (seq (peek mouse-loc-data))) (conj mouse-loc-data []);adds [] to the end to seprate lines drawn
+      (and button-pressed
+           (not (and  (<= 0 x 100) (<= 100 y 550))); stops adding when clicking on buttons
+           (not= [x y]  (take-last 2 (peek (peek mouse-loc-data))))) ; removes dupes
+      (conj (pop mouse-loc-data) (conj (peek mouse-loc-data) [draw-color draw-width x y]))
+      :else mouse-loc-data)))
 
 (defn save [state]
   (when-not (state :file-saved) (spit "test.txt" (state :mouse-loc-data)))
@@ -56,7 +63,7 @@
    :current-mouse-loc nil
    :button-pressed false
    :draw-color 0
-   :draw-thickness 15})
+   :draw-width 15})
 
 (defn which-button [x y button-state]
   (if (and (>= 100 x) (<= 0 x) (<= 100 y) (>= 550 y))
@@ -80,10 +87,11 @@
 
 (defn update-state [state]
   (let [color (:color (:button-selected state))
-        func  (:func  (:button-selected state))]
+        func  (:func  (:button-selected state))
+        [x y]  (get-mouse-loc)]
     (cond-> state
   ;stop initial button click from being added to drawing
-      (and (q/mouse-pressed?) (not (and  (<= 0 (q/mouse-x) 100) (<= 100 (q/mouse-y) 550))))
+      (and (:button-pressed state) (not (and  (<= 0 x 100) (<= 100 y 550))))
       (assoc :mouse-state true)
       (not (q/mouse-pressed?)) (assoc :mouse-state false)
     ;switch to color chosen
@@ -139,7 +147,7 @@
   (q/stroke (state :draw-color))
   (q/fill (state :draw-color))
   (q/stroke-weight 0)
-  (q/ellipse (q/mouse-x) (q/mouse-y)  (:draw-thickness state) (:draw-thickness state))
+  (q/ellipse (q/mouse-x) (q/mouse-y)  (:draw-width state) (:draw-width state))
 
   state)
 
@@ -147,8 +155,8 @@
   (assoc state :button-pressed true :button-selected (which-button (m-state :x) (m-state :y) (:button-selected state))))
 
 (defn wheel [state w-state]
-  (let [num (math/abs (+ (:draw-thickness state) w-state))] ;make sure :draw-thickness doesnt go negative
-    (assoc state :draw-thickness num)))
+  (let [num (math/abs (+ (:draw-width state) w-state))] ;make sure :draw-width doesnt go negative
+    (assoc state :draw-width num)))
 
 (defn m-release [state r-state]
   (let [x (:x r-state) y (:y r-state)]
