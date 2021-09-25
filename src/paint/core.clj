@@ -7,7 +7,8 @@
             [clojure.math.numeric-tower :as math]))
 
 (defn run [] (use 'paint.core :reload-all))
-
+(defn get-mouse-loc []
+  [(q/mouse-x) (q/mouse-y)])
 (defn line [state]
   (let [m-state (:mouse-state state)
         m-loc (:mouse-loc-data state)
@@ -24,7 +25,7 @@
   (cond
     (and (not (:mouse-state state)) (seq (peek (:mouse-loc-data state)))) (conj (:mouse-loc-data state) []);adds [] to the end to seprate lines drawn
     (and (:mouse-state state)
-         (not= [(q/mouse-x) (q/mouse-y)]  (take-last 2 (peek (peek (:mouse-loc-data state)))))) ; removes dupes
+         (not= (get-mouse-loc)  (take-last 2 (peek (peek (:mouse-loc-data state)))))) ; removes dupes
     (conj (pop (state :mouse-loc-data)) (conj (peek (state :mouse-loc-data)) [(:draw-color state) (:draw-thickness state) (q/mouse-x) (q/mouse-y)]))
     :else (state :mouse-loc-data)))
 
@@ -116,7 +117,7 @@
   (q/background 200)
   (q/text-size 30)
   (q/stroke-weight 1)
-;(println "button-pressed?" (state :button-pressed))
+  (println "get-mouse-loc" (get-mouse-loc))
   (dorun  ;function buttons
    (map (fn [[x y width height] button-names] (draw-button  x y width height button-names
     ; this allows for 2 buttons to be highlighted a func and color button
@@ -143,16 +144,13 @@
   state)
 
 (defn click [state m-state]
-  (println "button clicked")
   (assoc state :button-pressed true :button-selected (which-button (m-state :x) (m-state :y) (:button-selected state))))
 
 (defn wheel [state w-state]
   (let [num (math/abs (+ (:draw-thickness state) w-state))] ;make sure :draw-thickness doesnt go negative
-    (println "wheel" w-state num)
     (assoc state :draw-thickness num)))
 
 (defn m-release [state r-state]
-  (println "button released")
   (let [x (:x r-state) y (:y r-state)]
     (if (and (not (and (<= 0 x 100) (<= 100 y 550)))
              (= (:func (:button-selected state)) "line"))
