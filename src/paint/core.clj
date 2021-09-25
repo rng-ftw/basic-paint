@@ -34,10 +34,10 @@
 
 (defn loading [state]
   (if (.exists (io/file "test.txt"))
-    (let [color (:color (state :button-state))]
+    (let [color (:color (state :button-selected))]
       (if (not (state :file-loaded))
         (assoc state :mouse-loc-data (edn/read-string (slurp "test.txt"))
-               :file-loaded true :button-state {:func nil :color color}) state))
+               :file-loaded true :button-selected {:func nil :color color}) state))
     state))
 
 (defn setup []
@@ -48,11 +48,12 @@
    :button-loc  (mapv #(vector 0 % 100 50) [100 150 200 250 300 350 400 450 500]) ;format is [x y width height]
    :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
    :button-names ["line" "draw" "save" "load" "red" "green" "blue" "black" "white"]
-   :button-state {:func nil :color "black"}
+   :button-selected {:func nil :color "black"}
    :button-release nil
    :mouse-state nil
    :mouse-loc-data  [[]]; last one needs to be empty [[]] format is [[color width x y]]
    :current-mouse-loc nil
+   :button-pressed false
    :draw-color 0
    :draw-thickness 15})
 
@@ -77,8 +78,8 @@
     button-state))
 
 (defn update-state [state]
-  (let [color (:color (:button-state state))
-        func  (:func  (:button-state state))]
+  (let [color (:color (:button-selected state))
+        func  (:func  (:button-selected state))]
     (cond-> state
   ;stop initial button click from being added to drawing
       (and (q/mouse-pressed?) (not (and  (<= 0 (q/mouse-x) 100) (<= 100 (q/mouse-y) 550))))
@@ -115,12 +116,12 @@
   (q/background 200)
   (q/text-size 30)
   (q/stroke-weight 1)
-
+;(println "button-pressed?" (state :button-pressed))
   (dorun  ;function buttons
    (map (fn [[x y width height] button-names] (draw-button  x y width height button-names
     ; this allows for 2 buttons to be highlighted a func and color button
-                                                            (or (= (:func (:button-state state)) button-names)
-                                                                (= (:color (:button-state state)) button-names))))
+                                                            (or (= (:func (:button-selected state)) button-names)
+                                                                (= (:color (:button-selected state)) button-names))))
         (:button-loc state) (:button-names state)))
 
   (q/text-align :center :center)
@@ -142,7 +143,8 @@
   state)
 
 (defn click [state m-state]
-  (assoc state :button-state (which-button (m-state :x) (m-state :y) (:button-state state))))
+  (println "button clicked")
+  (assoc state :button-pressed true :button-selected (which-button (m-state :x) (m-state :y) (:button-selected state))))
 
 (defn wheel [state w-state]
   (let [num (math/abs (+ (:draw-thickness state) w-state))] ;make sure :draw-thickness doesnt go negative
@@ -150,10 +152,12 @@
     (assoc state :draw-thickness num)))
 
 (defn m-release [state r-state]
+  (println "button released")
   (let [x (:x r-state) y (:y r-state)]
-    (if (not (and (>= 100 x) (<= 0 x) (<= 100 y) (>= 550 y)))
-      (if (= (:func (:button-state state)) "line")
-        (assoc state :button-release r-state) state) state)))
+    (if (and (not (and (<= 0 x 100) (<= 100 y 550)))
+             (= (:func (:button-selected state)) "line"))
+      (assoc state :button-release r-state :button-pressed false)
+      (assoc state :button-pressed false))))
 
 (q/defsketch paint
   :title "draw: hit C to clear screen"
@@ -161,7 +165,7 @@
   :setup setup
   :update update-state
   :draw draw-screen
-  :mouse-clicked click
+  :mouse-pressed click
   :mouse-released m-release
   :mouse-wheel wheel
   :features [:resizable]
