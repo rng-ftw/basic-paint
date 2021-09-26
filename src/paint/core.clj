@@ -10,15 +10,16 @@
 (defn get-mouse-loc []
   [(q/mouse-x) (q/mouse-y)])
 (defn line [state]
-  (let [m-state (:mouse-state state)
-        m-loc (:mouse-loc-data state)
+  (let [m-loc (:mouse-loc-data state)
         b-rel (:button-release state)
         color (:draw-color state)
         draw-width (:draw-width state)
         [x y] (get-mouse-loc)]
+		;(println  (state :mouse-loc-data))
     (cond
-      (and (not m-state) (<= 2 (count (peek m-loc)))) (assoc state :mouse-loc-data (conj (:mouse-loc-data state) []))
-      (and  b-rel (not= [x y] (take-last 2 (peek (peek m-loc)))));checks for dupes
+      (<= 2 (count (peek m-loc))) (assoc state :mouse-loc-data (conj (:mouse-loc-data state) []))
+      (and  b-rel (not (and  (<= 0 x 100) (<= 100 y 550)))
+            (not= [x y] (take-last 2 (peek (peek m-loc)))));checks for dupes
       (assoc state :mouse-loc-data (conj (pop m-loc) (conj (peek m-loc) [color draw-width x y])) :button-release nil)
       :else state)))
 
@@ -41,7 +42,7 @@
   true)
 
 (defn loading [state]
-  (println "loading....")
+
   (if (.exists (io/file "test.txt"))
     (let [color (:color (state :button-selected))]
       (if (not (state :file-loaded))
@@ -54,9 +55,10 @@
   ; setup function returns initial state. 
   {:file-saved false
    :file-loaded false
-   :button-loc  (mapv #(vector 0 % 100 50) [100 150 200 250 300 350 400 450 500]) ;format is [x y width height]
+   :undo false
+   :button-loc  (mapv #(vector 0 % 100 50) [100 150 200 250 300 350 400 450 500 550]) ;format is [x y width height]
    :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
-   :button-names ["line" "draw" "save" "load" "red" "green" "blue" "black" "white"]
+   :button-names ["line" "draw" "save" "load" "undo" "red" "green" "blue" "black" "white"]
    :button-selected {:func nil :color "black"}
    :button-release nil
    :mouse-loc-data  [[]]; last one needs to be empty [[]] format is [[color width x y]]
@@ -73,23 +75,34 @@
             (< 150 y 200) "draw"
             (< 200 y 250) "save"
             (< 250 y 300) "load"
+            (< 300 y 350) "undo"
             :else (:func button-state))
           c-button
           (cond
-            (< 300 y 350) "red"
-            (< 350 y 400) "green"
-            (< 400 y 450) "blue"
-            (< 450 y 500) "black"
-            (< 500 y 550) "white"
+            (< 350 y 400) "red"
+            (< 350 y 450) "green"
+            (< 400 y 500) "blue"
+            (< 500 y 550) "black"
+            (< 550 y 600) "white"
             :else (:color button-state))]
       (assoc button-state :color c-button :func f-button))
     button-state))
+
+(defn undo [state]
+  (let [color (:color (state :button-selected))
+        m-loc-data (:mouse-loc-data state)]
+
+    (if (not-empty (pop m-loc-data))
+      (assoc state :button-selected {:func nil :color color}
+             :mouse-loc-data (conj (pop (pop m-loc-data)) []))
+      (assoc state :button-selected {:func nil :color color}))))
 
 (defn update-state [state]
 
   (let [func  (:func  (:button-selected state))]
     (cond-> state
-
+      (= func  "undo") (undo)
+      (not= func "undo") (assoc :undo false)
 	;clears screen 
       (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse-loc-data [[]])
     ;draw
@@ -135,7 +148,7 @@
                (= 0 (count %)) nil
                (= 1 (count %)) ((fn [[[color width x y]]] (q/stroke color) (q/fill color) (q/stroke-weight 0) (q/ellipse x y  width width)) %) ;individual pixels are really small :p
                (< 1 (count %)) (doall (map (fn [[color width x1 y1 - -  x2 y2]] (q/stroke color) (q/stroke-weight width) (q/line x1 y1 x2 y2)) (partition 8 4 (flatten %))))) (:mouse-loc-data state))))
-;(println "in draw-screen"(:color(state :button-selected))(state :draw-color))
+
   (q/stroke (state :draw-color))
   (q/fill (state :draw-color))
   (q/stroke-weight 0)
@@ -160,7 +173,7 @@
       (assoc state :button-pressed false))))
 
 (q/defsketch paint
-  :title "draw: hit C to clear screen"
+  :title "draw: hit C to clear screen : use scroll wheel to resize paintbrush"
   :size [500 500]
   :setup setup
   :update update-state
