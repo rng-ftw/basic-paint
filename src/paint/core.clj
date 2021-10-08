@@ -15,11 +15,10 @@
         color (:draw-color state)
         draw-width (:draw-width state)
         [x y] (get-mouse-loc)
-		{{:keys [min-x max-x min-y max-y  ]}:bounding-box} state
-		]
+        {{:keys [min-x max-x min-y max-y]} :bounding-box} state]
     (cond
       (<= 2 (count (peek m-loc))) (assoc state :mouse-loc-data (conj (:mouse-loc-data state) []))
-      (and  b-rel (not (and  (<= min-x  x max-x)(<= min-y y max-y)))
+      (and  b-rel (not (and  (<= min-x  x max-x) (<= min-y y max-y)))
             (not= [x y] (take-last 2 (peek (peek m-loc)))));checks for dupes
       (assoc state :mouse-loc-data (conj (pop m-loc) (conj (peek m-loc) [color draw-width x y])) :button-release nil)
       :else state)))
@@ -30,11 +29,11 @@
         draw-width (:draw-width state)
         [x y] (get-mouse-loc)
         button-pressed (:button-pressed state)
-		{{:keys [min-x max-x min-y max-y  ]}:bounding-box} state]
+        {{:keys [min-x max-x min-y max-y]} :bounding-box} state]
     (cond
       (and (not button-pressed) (seq (peek mouse-loc-data))) (assoc state :mouse-loc-data (conj mouse-loc-data []));adds [] to the end to seprate lines drawn
       (and button-pressed
-           (not (and  (<= min-x x max-x)(<= min-y y max-y))); stops adding when clicking on buttons
+           (not (and  (<= min-x x max-x) (<= min-y y max-y))); stops adding when clicking on buttons
            (not= [x y]  (take-last 2 (peek (peek mouse-loc-data))))) ; removes dupes
       (assoc state :mouse-loc-data (conj (pop mouse-loc-data) (conj (peek mouse-loc-data) [draw-color draw-width x y])))
       :else state)))
@@ -53,81 +52,54 @@
     state))
 
 (def buttons ; add buttons here
-[{:name "line" :color false}{:name "draw" :color false}
- {:name "save" :color false}{:name "load" :color false}
- {:name "undo" :color false}
- 
- {:name "red"  :color -65536}
- {:name "green" :color -16711936}{:name "blue" :color -16776961}
- {:name "black" :color -16777216}{:name "white" :color -1}])
- 
+  [{:name "line" :color false} {:name "draw" :color false}
+   {:name "save" :color false} {:name "load" :color false}
+   {:name "undo" :color false}
+
+   {:name "red"  :color -65536}
+   {:name "green" :color -16711936} {:name "blue" :color -16776961}
+   {:name "black" :color -16777216} {:name "white" :color -1}])
+
 (def height 40) ;button height
 (def width 95) ;button width
 
 (defn setup []
   (q/frame-rate 60)
   ; setup function returns initial state.
-(let [
- button-loc-y (mapv #(into [] [% (+ % (- height 1))])(range 0 (*(count buttons)height) height)) ; avoids overlapping buttons
- button-loc-x [0 width]
- bounding-box {:min-x (first button-loc-x) :max-x (last button-loc-x):min-y (first(first button-loc-y)):max-y(last(last button-loc-y))}
+  (let [button-loc-y (mapv #(into [] [% (+ % (- height 1))]) (range 0 (* (count buttons) height) height)) ; avoids overlapping buttons
+        button-loc-x [0 width]
+        bounding-box {:min-x (first button-loc-x) :max-x (last button-loc-x) :min-y (first (first button-loc-y)) :max-y (last (last button-loc-y))}]
+    {:file-saved false
+     :file-loaded false
+     :undo false
 
-]  
-  {:file-saved false
-   :file-loaded false
-   :undo false
-   
-   :button-names (mapv #(:name %) buttons) ;["line" "draw" "save" "load" "undo" "red" "green" "blue" "black" "white"]
-   :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
-   :button-loc  (mapv #(vector 0 % width height) (range  0 (*(count buttons)height) height)) ;format is [x y width height]
-   :button-loc-y (mapv #(into [] [% (+ % (- height 1))])(range 0 (*(count buttons)height) height)) ; avoids overlapping buttons
-   :button-loc-x [0 width]
-   :bounding-box bounding-box
-   
-   :button-selected {:func nil :color "black"}
-   :button-release nil
-   :mouse-loc-data  [[]]; last one needs to be empty [[]] format is [[color width x y]]
-   :current-mouse-loc nil
-   :button-pressed false
-   :draw-color 0
-   :draw-width 15}))
+     :button-names (mapv #(:name %) buttons) ;["line" "draw" "save" "load" "undo" "red" "green" "blue" "black" "white"]
+     :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
+     :button-loc  (mapv #(vector 0 % width height) (range  0 (* (count buttons) height) height)) ;format is [x y width height]
+     :button-loc-y (mapv #(into [] [% (+ % (- height 1))]) (range 0 (* (count buttons) height) height)) ; avoids overlapping buttons
+     :button-loc-x [0 width]
+     :bounding-box bounding-box
+
+     :button-selected {:func nil :color "black"}
+     :button-release nil
+     :mouse-loc-data  [[]]; last one needs to be empty [[]] format is [[color width x y]]
+     :current-mouse-loc nil
+     :button-pressed false
+     :draw-color 0
+     :draw-width 15}))
 
 (defn which-button [x y button-state button-loc-y button-names bounding-box]
-(let [{:keys [min-x max-x min-y max-y  ]}bounding-box
-	  ]
-(if (and  (<= min-x  x max-x) (<= min-y y max-y))
-(let [f-button 
-(button-names(first(keep-indexed
- (fn [index item]
-	(let [[a b] item]
-   (when (<= a y b)
-     index)))button-loc-y)))
-	 c-button "red"]
-	 (assoc button-state :color c-button :func f-button))
-    button-state)))
-
-  ; (if (and  (<= 0 x 100) (<= 0 y 500))
-    ; (let [f-button
-          ; (cond ; todo fix this so I dont have to add stuff to multiple places in order to add another button
-            ; (< 100 y 150) "line"
-            ; (< 150 y 200) "draw"
-            ; (< 200 y 250) "save"
-            ; (< 250 y 300) "load"
-            ; (< 300 y 350) "undo"
-            ; :else (:func button-state))
-          ; c-button
-          ; (cond
-            ; (< 350 y 400) "red"
-            ; (< 350 y 450) "green"
-            ; (< 400 y 500) "blue"
-            ; (< 500 y 550) "black"
-            ; (< 550 y 600) "white"
-            ; :else (:color button-state))]
-      ; (assoc button-state :color c-button :func f-button))
-    ; button-state)
-	
-	
-
+  (let [{:keys [min-x max-x min-y max-y]} bounding-box]
+    (if (and  (<= min-x  x max-x) (<= min-y y max-y))
+      (let [f-button
+            (button-names (first (keep-indexed
+                                  (fn [index item]
+                                    (let [[a b] item]
+                                      (when (<= a y b)
+                                        index))) button-loc-y)))
+            c-button "red"]
+        (assoc button-state :color c-button :func f-button))
+      button-state)))
 (defn undo [state]
   (let [color (:color (state :button-selected))
         m-loc-data (:mouse-loc-data state)]
@@ -164,7 +136,7 @@
   (q/rect (+ x 4) (+ y 4) (- width 8) (- height  8) 1  1 10 1)
   (q/fill 255 255 255)
   (q/text-align :left :top)
-  (q/text b-name  (+ x 10)  y ))
+  (q/text b-name  (+ x 10)  y))
 
 (defn draw-screen [state]
   (q/background 200)
@@ -196,7 +168,7 @@
   state)
 
 (defn click [state m-state]
-  (let [b-clicked (which-button (m-state :x) (m-state :y) (:button-selected state)(:button-loc-y state)(:button-names state)(:bounding-box state))
+  (let [b-clicked (which-button (m-state :x) (m-state :y) (:button-selected state) (:button-loc-y state) (:button-names state) (:bounding-box state))
         c-clicked (:color b-clicked)]
     (assoc state :button-pressed true :button-selected b-clicked :draw-color ((:color-names state) c-clicked))))
 
@@ -205,14 +177,13 @@
     (assoc state :draw-width num)))
 
 (defn m-release [state r-state]
-  (let [x (:x r-state) 
+  (let [x (:x r-state)
         y (:y r-state)
-		min-x (:min-x (:bounding-box state)) 
-        max-x (:max-x (:bounding-box state)) 
-        min-y (:min-y (:bounding-box state)) 
-        max-y (:max-y (:bounding-box state))
-		]
-    (if (and (not (and (<= min-x  x max-x)(<= min-y y max-y)))
+        min-x (:min-x (:bounding-box state))
+        max-x (:max-x (:bounding-box state))
+        min-y (:min-y (:bounding-box state))
+        max-y (:max-y (:bounding-box state))]
+    (if (and (not (and (<= min-x  x max-x) (<= min-y y max-y)))
              (= (:func (:button-selected state)) "line"))
       (assoc state :button-release r-state :button-pressed false)
       (assoc state :button-pressed false))))
