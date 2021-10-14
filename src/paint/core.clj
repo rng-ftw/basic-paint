@@ -68,7 +68,7 @@
 (defn setup []
   (q/frame-rate 60)
   ; setup function returns initial state.
-  (let [button-loc-y (mapv #(into [] [% (+ % (- height 1))]) (range y (+(* (count buttons) height)y) height)) ; avoids overlapping buttons
+  (let [button-loc-y (mapv #(into [] [% (+ % (- height 1))]) (range y (+ (* (count buttons) height) y) height)) ; avoids overlapping buttons
         button-loc-x [x (+ width x)]
         bounding-box {:min-x (first button-loc-x) :max-x (last button-loc-x) :min-y (first (first button-loc-y)) :max-y (last (last button-loc-y))}]
     {:file-saved false
@@ -78,19 +78,19 @@
      :toggle-buttons true
      :button-names (mapv #(:name %) buttons) ;["line" "draw" "save" "load" "undo" "red" "green" "blue" "black" "white"]
      :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
-     :button-loc  (mapv #(vector x % width height) (range  y (+(* (count buttons) height)y) height)) ;format is [x y width height]
+     :button-loc  (mapv #(vector x % width height) (range  y (+ (* (count buttons) height) y) height)) ;format is [x y width height]
      :button-loc-y button-loc-y ;(mapv #(into [] [% (+ % (- height 1))]) (range 0 (* (count buttons) height) height)) ; avoids overlapping buttons
      :button-loc-x button-loc-x
      :bounding-box bounding-box
 
      :s-button-selected {:func nil :color "black"}
-	 
+
      :m-button-release false
-	 :m-button-pressed false
-	 
-	 :k-button-released false
-	 :k-button-pressed false
-	 
+     :m-button-pressed false
+
+     :k-button-released false
+     :k-button-pressed false
+
      :mouse-loc-data  [[]]; last one needs to be empty [[]] format is [[color width x y]]
      :current-mouse-loc nil
      :draw-color 0
@@ -98,20 +98,17 @@
 
 (defn which-button [x y button-state button-loc-y button-names bounding-box toggle-buttons]
   (let [{:keys [min-x max-x min-y max-y]} bounding-box]
-    (if (and  (<= min-x  x max-x) (<= min-y y max-y)toggle-buttons)
-      (let [
-			choice
-			(first
+    (if (and  (<= min-x  x max-x) (<= min-y y max-y) toggle-buttons)
+      (let [choice
+            (first
              (keep-indexed
-							  (fn [index item]
-								(let [[a b] item]
-								  (when (<= a y b)
-									index))) button-loc-y))
-            ]
-			(if (:color (buttons choice))
-        (assoc button-state :color (button-names choice))
-		(assoc button-state :func (button-names choice))
-		))
+              (fn [index item]
+                (let [[a b] item]
+                  (when (<= a y b)
+                    index))) button-loc-y))]
+        (if (:color (buttons choice))
+          (assoc button-state :color (button-names choice))
+          (assoc button-state :func (button-names choice))))
       button-state)))
 (defn undo [state]
   (let [color (:color (state :s-button-selected))
@@ -125,16 +122,16 @@
 (defn update-state [state]
   (let [func  (:func  (:s-button-selected state))]
   ;(println "release" (:k-button-released state) "pressed"(:k-button-pressed state)(:toggle-buttons state)(q/key-as-keyword))
-  
+
     (cond-> state
       (= func  "undo") (undo)
       (not= func "undo") (assoc :undo false)
 	;clears screen 
       (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse-loc-data [[]])
 	;toggles buttons displaying  
-	
-	  (and (:k-button-released state) (= (q/key-as-keyword) :space))(assoc  :toggle-buttons(not (:toggle-buttons state)))
-	  (:k-button-released state)(assoc :k-button-released false);needs to be after keyboard key presses to make sure it only gets activated once
+
+      (and (:k-button-released state) (= (q/key-as-keyword) :space)) (assoc  :toggle-buttons (not (:toggle-buttons state)))
+      (:k-button-released state) (assoc :k-button-released false);needs to be after keyboard key presses to make sure it only gets activated once
     ;draw
       (= func "draw") (drawing)
     ;line
@@ -161,14 +158,14 @@
   (q/background 200)
   (q/text-size 30)
   (q/stroke-weight 1)
-  
+
   (when (:toggle-buttons state)
-  (dorun  ;function buttons
-   (map (fn [[x y width height] button-names] (draw-button  x y width height button-names
+    (dorun  ;function buttons
+     (map (fn [[x y width height] button-names] (draw-button  x y width height button-names
     ; this allows for 2 buttons to be highlighted a func and color button
-                                                            (or (= (:func (:s-button-selected state)) button-names)
-                                                                (= (:color (:s-button-selected state)) button-names))))
-        (:button-loc state) (:button-names state))))
+                                                              (or (= (:func (:s-button-selected state)) button-names)
+                                                                  (= (:color (:s-button-selected state)) button-names))))
+          (:button-loc state) (:button-names state))))
 
   (q/text-align :center :center)
   (when (q/key-pressed?) (q/text (str "key as keyword:" (q/key-as-keyword)) (q/mouse-x) (+ (q/mouse-y) 30)))
@@ -189,7 +186,7 @@
   state)
 
 (defn click [state m-state]
-  (let [b-clicked (which-button (m-state :x) (m-state :y) (:s-button-selected state) (:button-loc-y state) (:button-names state) (:bounding-box state)(:toggle-buttons state))
+  (let [b-clicked (which-button (m-state :x) (m-state :y) (:s-button-selected state) (:button-loc-y state) (:button-names state) (:bounding-box state) (:toggle-buttons state))
         c-clicked (:color b-clicked)]
     (assoc state :m-button-pressed true :s-button-selected b-clicked :draw-color ((:color-names state) c-clicked))))
 
@@ -203,11 +200,11 @@
         {{:keys [min-x max-x min-y max-y]} :bounding-box} state]
     (if (and (not (and (<= min-x  x max-x) (<= min-y y max-y)))
              ;(= (:func (:s-button-selected state)) "line")
-			 )
+             )
       (assoc state :m-button-release true :m-button-pressed false)
       (assoc state :m-button-pressed false))))
 (defn k-pressed [state k-state] (assoc state :k-button-pressed true :k-button-released false))
-	   
+
 (defn k-released [state k-state] (assoc state :k-button-pressed false :k-button-released true))
 (q/defsketch paint
   :title "draw: hit C to clear screen : use scroll wheel to resize paintbrush"
@@ -215,7 +212,7 @@
   :setup setup
   :update update-state
   :draw draw-screen
-  :key-pressed k-pressed 
+  :key-pressed k-pressed
   :key-released k-released
   :mouse-pressed click
   :mouse-released m-release

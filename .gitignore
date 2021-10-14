@@ -16,3 +16,4 @@ test.txt
 .socket-repl-port
 .nrepl-port
 src\paint\core.clj~
+/.clj-kondo
