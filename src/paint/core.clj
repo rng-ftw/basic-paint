@@ -158,15 +158,6 @@
   (q/background 200)
   (q/text-size 30)
   (q/stroke-weight 1)
-
-  (when (:toggle-buttons state)
-    (dorun  ;function buttons
-     (map (fn [[x y width height] button-names] (draw-button  x y width height button-names
-    ; this allows for 2 buttons to be highlighted a func and color button
-                                                              (or (= (:func (:s-button-selected state)) button-names)
-                                                                  (= (:color (:s-button-selected state)) button-names))))
-          (:button-loc state) (:button-names state))))
-
   (q/text-align :center :center)
   (when (q/key-pressed?) (q/text (str "key as keyword:" (q/key-as-keyword)) (q/mouse-x) (+ (q/mouse-y) 30)))
   (when (q/mouse-pressed?) (q/text (str (q/mouse-x) " " (q/mouse-y)) (q/mouse-x) (+ (q/mouse-y) 10)))
@@ -182,6 +173,15 @@
   (q/fill (state :draw-color))
   (q/stroke-weight 0)
   (q/ellipse (q/mouse-x) (q/mouse-y)  (:draw-width state) (:draw-width state))
+  
+  
+  (when (:toggle-buttons state)
+    (dorun  ;function buttons
+     (map (fn [[x y width height] button-names] (draw-button  x y width height button-names
+    ; this allows for 2 buttons to be highlighted a func and color button
+                                                              (or (= (:func (:s-button-selected state)) button-names)
+                                                                  (= (:color (:s-button-selected state)) button-names))))
+          (:button-loc state) (:button-names state))))
 
   state)
 
