@@ -4,6 +4,8 @@ Looking to get some feedback/code review.
 
 hit c to clear screen
 
+hit spacebar to remove on screen buttons basically fullscreen mode
+
 screen can be resize to max screen size for larger draw area
 
 Line: draws a line between 2 points
