@@ -9,7 +9,7 @@
 (defn run [] (use 'paint.core :reload-all))
 (defn get-mouse-loc []
   [(q/mouse-x) (q/mouse-y)])
-  
+
 (defn line [state]
   (let [m-loc (:mouse-loc-data state)
         b-rel (:m-button-release state)
@@ -79,7 +79,7 @@
      :file-loaded false
 
      :toggle-buttons true
-     :button-names (mapv #(:name %) buttons) 
+     :button-names (mapv #(:name %) buttons)
      :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
      :button-loc  (mapv #(vector x % width height) (range  y (+ (* (count buttons) height) y) height)) ;format is [x y width height]
      :button-loc-y button-loc-y ;(mapv #(into [] [% (+ % (- height 1))]) (range 0 (* (count buttons) height) height)) ; avoids overlapping buttons
@@ -100,7 +100,7 @@
      :current-mouse-loc nil
      :draw-color 0
      :draw-width 15}))
-	 
+
 (defn which-button [x y button-state button-loc-y button-names bounding-box toggle-buttons]
   (let [{:keys [min-x max-x min-y max-y]} bounding-box]
     (if (and  toggle-buttons (<= min-x  x max-x) (<= min-y y max-y))
@@ -123,14 +123,14 @@
 	;m-loc-data -> ld-redo
       (if (not-empty (pop m-loc-data))
         (assoc state :loc-data-redo    (conj (pop  ld-redo) (peek (pop  m-loc-data)) [])
-                     :mouse-loc-data (conj (pop (pop m-loc-data)) [])
-                     :s-button-selected {:func nil :color (:color (state :s-button-selected))})
+               :mouse-loc-data (conj (pop (pop m-loc-data)) [])
+               :s-button-selected {:func nil :color (:color (state :s-button-selected))})
         (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))
       ;ld-redo -> m-loc-data
       (if (not-empty (pop ld-redo))
         (assoc state :loc-data-redo (conj (pop (pop ld-redo)) [])
-                     :mouse-loc-data (conj (pop m-loc-data) (peek (pop ld-redo)) [])
-                     :s-button-selected {:func nil :color (:color (state :s-button-selected))})
+               :mouse-loc-data (conj (pop m-loc-data) (peek (pop ld-redo)) [])
+               :s-button-selected {:func nil :color (:color (state :s-button-selected))})
         (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))})))))
 
 (defn update-state [state]
@@ -210,7 +210,7 @@
     (if (not (and (<= min-x  x max-x) (<= min-y y max-y)))
       (assoc state :m-button-release true :m-button-pressed false)
       (assoc state :m-button-release true :m-button-pressed false))))
-	  
+
 (defn k-pressed [state k-state] (assoc state :k-button-pressed true :k-button-released false))
 (defn k-released [state k-state] (assoc state :k-button-pressed false :k-button-released true))
 
