@@ -2,13 +2,14 @@
 (ns paint.core
   (:require [quil.core :as q]
             [quil.middleware :as m]
-            [clojure.java.io :as io]
-            [clojure.edn :as edn]
-            [clojure.math.numeric-tower :as math]))
+            [clojure.java.io :as io :only file]
+            [clojure.edn :as edn :only read-string]
+            [clojure.math.numeric-tower :as math :only abs]))
 
 (defn run [] (use 'paint.core :reload-all))
 (defn get-mouse-loc []
   [(q/mouse-x) (q/mouse-y)])
+  
 (defn line [state]
   (let [m-loc (:mouse-loc-data state)
         b-rel (:m-button-release state)
@@ -76,9 +77,9 @@
         bounding-box {:min-x (first button-loc-x) :max-x (last button-loc-x) :min-y (first (first button-loc-y)) :max-y (last (last button-loc-y))}]
     {:file-saved false
      :file-loaded false
-  
+
      :toggle-buttons true
-     :button-names (mapv #(:name %) buttons) ;["line" "draw" "save" "load" "undo" "red" "green" "blue" "black" "white"]
+     :button-names (mapv #(:name %) buttons) 
      :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
      :button-loc  (mapv #(vector x % width height) (range  y (+ (* (count buttons) height) y) height)) ;format is [x y width height]
      :button-loc-y button-loc-y ;(mapv #(into [] [% (+ % (- height 1))]) (range 0 (* (count buttons) height) height)) ; avoids overlapping buttons
@@ -99,6 +100,7 @@
      :current-mouse-loc nil
      :draw-color 0
      :draw-width 15}))
+	 
 (defn which-button [x y button-state button-loc-y button-names bounding-box toggle-buttons]
   (let [{:keys [min-x max-x min-y max-y]} bounding-box]
     (if (and  toggle-buttons (<= min-x  x max-x) (<= min-y y max-y))
@@ -114,45 +116,33 @@
           (assoc button-state :func (button-names choice))))
       button-state)))
 
-(defn undo [state check]
- (let [ld-redo (:loc-data-redo state)
+(defn undo [state undo]
+  (let [ld-redo (:loc-data-redo state)
         m-loc-data (:mouse-loc-data state)]
-    (if check
+    (if undo
 	;m-loc-data -> ld-redo
       (if (not-empty (pop m-loc-data))
         (assoc state :loc-data-redo    (conj (pop  ld-redo) (peek (pop  m-loc-data)) [])
-                  :mouse-loc-data (conj (pop (pop m-loc-data)) [])
-				  :s-button-selected {:func nil :color (:color (state :s-button-selected))})
-	    (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))
+                     :mouse-loc-data (conj (pop (pop m-loc-data)) [])
+                     :s-button-selected {:func nil :color (:color (state :s-button-selected))})
+        (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))
       ;ld-redo -> m-loc-data
       (if (not-empty (pop ld-redo))
         (assoc state :loc-data-redo (conj (pop (pop ld-redo)) [])
-                  :mouse-loc-data (conj (pop m-loc-data) (peek (pop ld-redo)) [])
-				  :s-button-selected {:func nil :color (:color (state :s-button-selected))})
-		(assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))
-      
-    )))
-	  
-(defn output [state a]
- (println a " " (:mouse-loc-data state)(:loc-data-redo state))
- state
-  )
-
+                     :mouse-loc-data (conj (pop m-loc-data) (peek (pop ld-redo)) [])
+                     :s-button-selected {:func nil :color (:color (state :s-button-selected))})
+        (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))})))))
 
 (defn update-state [state]
   (let [func  (:func  (:s-button-selected state))]
     (cond-> state
-	;(= func  "redo")  (output "before")
-     (= func  "undo") (undo true)  ;undo
-     (= func  "redo") (undo false) ;redo
-    ;(= func  "redo")  (output "after")
-
-
-	;clears screen 
+      (= func  "undo") (undo true)  ;undo
+      (= func  "redo") (undo false) ;redo
+;clears screen 
       (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse-loc-data [[]])
 	;toggles buttons displaying  
       (and (:k-button-released state) (= (q/key-as-keyword) :space)) (assoc  :toggle-buttons (not (:toggle-buttons state)))
-      (:k-button-released state) (assoc :k-button-released false);needs to be after keyboard key presses to make sure it only gets activated once
+      (:k-button-released state) (assoc :k-button-released false);needs to be after keyboard key presses to make sure it only gets activated once per key press
     ;draw
       (= func "draw") (drawing)
     ;line
@@ -202,10 +192,9 @@
                                                               (or (= (:func (:s-button-selected state)) button-names)
                                                                   (= (:color (:s-button-selected state)) button-names))))
           (:button-loc state) (:button-names state))))
-
   state)
 
-(defn click [state m-state]
+(defn m-pressed [state m-state]
   (let [b-clicked (which-button (m-state :x) (m-state :y) (:s-button-selected state) (:button-loc-y state) (:button-names state) (:bounding-box state) (:toggle-buttons state))
         c-clicked (:color b-clicked)]
     (assoc state :m-button-pressed true :s-button-selected b-clicked :draw-color ((:color-names state) c-clicked))))
@@ -219,12 +208,12 @@
         y (:y r-state)
         {{:keys [min-x max-x min-y max-y]} :bounding-box} state]
     (if (not (and (<= min-x  x max-x) (<= min-y y max-y)))
-
       (assoc state :m-button-release true :m-button-pressed false)
       (assoc state :m-button-release true :m-button-pressed false))))
+	  
 (defn k-pressed [state k-state] (assoc state :k-button-pressed true :k-button-released false))
-
 (defn k-released [state k-state] (assoc state :k-button-pressed false :k-button-released true))
+
 (q/defsketch paint
   :title "draw: hit C to clear screen : use scroll wheel to resize paintbrush"
   :size [500 500]
@@ -233,7 +222,7 @@
   :draw draw-screen
   :key-pressed k-pressed
   :key-released k-released
-  :mouse-pressed click
+  :mouse-pressed m-pressed
   :mouse-released m-release
   :mouse-wheel wheel
   :features [:resizable]
