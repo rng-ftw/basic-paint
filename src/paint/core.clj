@@ -17,7 +17,6 @@
         [x y] (get-mouse-loc)
         button-pressed (:m-button-pressed state)
         {{:keys [min-x max-x min-y max-y]} :bounding-box} state]
-    (println "line pressed :" button-pressed "release" b-rel)
     (cond
       (<= 2 (count (peek m-loc))) (assoc state :mouse-loc-data (conj (:mouse-loc-data state) []))
       (and  b-rel
@@ -77,8 +76,7 @@
         bounding-box {:min-x (first button-loc-x) :max-x (last button-loc-x) :min-y (first (first button-loc-y)) :max-y (last (last button-loc-y))}]
     {:file-saved false
      :file-loaded false
-     :undo false
-     :redo false
+  
      :toggle-buttons true
      :button-names (mapv #(:name %) buttons) ;["line" "draw" "save" "load" "undo" "red" "green" "blue" "black" "white"]
      :color-names {"red" -65536 "green" -16711936 "blue" -16776961 "black" -16777216 "white" -1}
@@ -116,38 +114,43 @@
           (assoc button-state :func (button-names choice))))
       button-state)))
 
-(defn undo [state]
-  (let [m-loc-data (if (not-empty (peek (:mouse-loc-data state))) [] (:mouse-loc-data state))
-        ld-redo (if (not-empty (peek (:loc-data-redo state))) (:loc-data-redo state) (pop (:loc-data-redo state)))]
-    (if (not-empty (pop m-loc-data))
-      (assoc state :s-button-selected {:func nil}
-             :loc-data-redo (conj ld-redo (peek (pop m-loc-data)))
-             :mouse-loc-data (conj (pop (pop m-loc-data)) [])
-             :s-button-selected {:func nil :color (:color (state :s-button-selected))})
-      (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))))
+(defn undo [state check]
+ (let [ld-redo (:loc-data-redo state)
+        m-loc-data (:mouse-loc-data state)]
+    (if check
+	;m-loc-data -> ld-redo
+      (if (not-empty (pop m-loc-data))
+        (assoc state :loc-data-redo    (conj (pop  ld-redo) (peek (pop  m-loc-data)) [])
+                  :mouse-loc-data (conj (pop (pop m-loc-data)) [])
+				  :s-button-selected {:func nil :color (:color (state :s-button-selected))})
+	    (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))
+      ;ld-redo -> m-loc-data
+      (if (not-empty (pop ld-redo))
+        (assoc state :loc-data-redo (conj (pop (pop ld-redo)) [])
+                  :mouse-loc-data (conj (pop m-loc-data) (peek (pop ld-redo)) [])
+				  :s-button-selected {:func nil :color (:color (state :s-button-selected))})
+		(assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))
+      
+    )))
+	  
+(defn output [state a]
+ (println a " " (:mouse-loc-data state)(:loc-data-redo state))
+ state
+  )
 
-(defn redo [state]
-  (let [m-loc-data (if (not-empty (peek (:mouse-loc-data state))) (:mouse-loc-data state) (pop (:mouse-loc-data state)))
-        ld-redo (if (not-empty (peek (:loc-data-redo state))) (:loc-data-redo state) (pop (:loc-data-redo state)))]
-    (if (not-empty   ld-redo)
-      (assoc state :s-button-selected {:func nil}
-             :loc-data-redo (conj  (pop ld-redo) [])
-             :mouse-loc-data (conj   m-loc-data (peek  ld-redo) [])
-             :s-button-selected {:func nil :color (:color (state :s-button-selected))})
-      (assoc state :s-button-selected {:func nil :color (:color (state :s-button-selected))}))))
+
 (defn update-state [state]
   (let [func  (:func  (:s-button-selected state))]
     (cond-> state
-      (= func  "undo") (undo)
-      (not= func "undo") (assoc :undo false)
+	;(= func  "redo")  (output "before")
+     (= func  "undo") (undo true)  ;undo
+     (= func  "redo") (undo false) ;redo
+    ;(= func  "redo")  (output "after")
 
-      (= func  "redo") (redo)
-      (not= func "redo") (assoc :redo false)
 
 	;clears screen 
       (and (q/key-pressed?) (= (q/key-as-keyword) :c)) (assoc :mouse-loc-data [[]])
 	;toggles buttons displaying  
-
       (and (:k-button-released state) (= (q/key-as-keyword) :space)) (assoc  :toggle-buttons (not (:toggle-buttons state)))
       (:k-button-released state) (assoc :k-button-released false);needs to be after keyboard key presses to make sure it only gets activated once
     ;draw
